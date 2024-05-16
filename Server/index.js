@@ -1,4 +1,3 @@
-
 const express = require('express');
 const { MongoClient } = require('mongodb');
 
@@ -15,8 +14,8 @@ const client = new MongoClient(url);
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-// Function to insert an item into the database
-async function insertItem(itemData) {
+// Function to insert a user into the database
+async function insertUser(userData) {
   try {
     // Connect to MongoDB
     await client.connect();
@@ -24,19 +23,113 @@ async function insertItem(itemData) {
 
     // Get the database
     const db = client.db(dbName);
-    const itemCollection = db.collection('item');
+    const userCollection = db.collection('User');
 
-    // Insert the new item into the collection
-    await itemCollection.insertOne(itemData);
-    console.log("Item added successfully");
+    // Insert the new user into the collection
+    await userCollection.insertOne(userData);
+    console.log("User added successfully");
   } catch (error) {
-    console.error("Error adding item:", error);
+    console.error("Error adding user:", error);
     throw error; // Rethrow the error to handle it in the route handler
   } finally {
     // Close the connection
     await client.close();
   }
 }
+
+// Route to add a new user
+app.post('/api/users', async (req, res) => {
+  const newUser = req.body; // User data from request body
+
+  try {
+    // Insert the user into the database
+    await insertUser(newUser);
+    // Respond with success message
+    res.status(201).send('User added successfully');
+  } catch (error) {
+    res.status(500).send('Error adding user');
+  }
+});
+
+// Function to verify user credentials
+async function verifyUserCredentials(userId, password) {
+  try {
+    // Connect to MongoDB
+    await client.connect();
+
+    // Get the database
+    const db = client.db(dbName);
+    const userCollection = db.collection('User');
+
+    // Find user by User_id and password
+    const user = await userCollection.findOne({ User_id: userId, password: password });
+
+    return user !== null; // Return true if user is found, otherwise false
+  } catch (error) {
+    console.error("Error verifying user credentials:", error);
+    throw error;
+  } finally {
+    // Close the connection
+    await client.close();
+  }
+}
+
+// Route to login
+app.post('/api/login', async (req, res) => {
+  const { User_id, password } = req.body; // Extract User_id and password from request body
+
+  try {
+    // Verify user credentials
+    const isValidUser = await verifyUserCredentials(User_id, password);
+
+    if (isValidUser) {
+      res.status(200).send('Login successful');
+    } else {
+      res.status(401).send('Invalid User ID or password');
+    }
+  } catch (error) {
+    res.status(500).send('Error logging in');
+  }
+});
+
+// Route to get user details by user ID
+app.get('/api/users/:userId', async (req, res) => {
+  const userId = req.params.userId; // User ID from request parameters
+
+  try {
+    // Connect to MongoDB
+    await client.connect();
+
+    // Get the database
+    const db = client.db(dbName);
+    const userCollection = db.collection('User');
+
+    // Find user by User_id
+    const user = await userCollection.findOne({ User_id: userId });
+
+    if (!user) {
+      res.status(404).send('User not found');
+    } else {
+      // Construct an object with user details
+      const userDetails = {
+        _id: user._id,
+        User_id: user.User_id,
+        User_name: user.User_name,
+        Phone_no: user.Phone_no,
+        address: user.address,
+        password: user.password // Include password in response
+      };
+
+      res.status(200).json(userDetails);
+    }
+  } catch (error) {
+    console.error("Error getting user:", error);
+    res.status(500).send('Error getting user');
+  } finally {
+    // Close the connection
+    await client.close();
+  }
+});
 
 // Route to add a new item
 app.post('/api/items_insert', async (req, res) => {
@@ -80,8 +173,7 @@ app.get('/api/items/:itemId', async (req, res) => {
         title: item.title,
         date: item.date,
         item_image: item.item_image,
-        found : item.found
-        
+        found: item.found
       };
 
       res.status(200).json(itemDetails);
@@ -94,7 +186,6 @@ app.get('/api/items/:itemId', async (req, res) => {
     await client.close();
   }
 });
-
 
 // Route to get all items
 app.get('/api/items', async (req, res) => {
@@ -122,7 +213,6 @@ app.get('/api/items', async (req, res) => {
     await client.close();
   }
 });
-
 
 // Route to delete an item by item ID
 app.delete('/api/items/:itemId', async (req, res) => {
@@ -152,7 +242,6 @@ app.delete('/api/items/:itemId', async (req, res) => {
     await client.close();
   }
 });
-
 
 // Route to update an item by item ID
 app.put('/api/items/:itemId', async (req, res) => {
@@ -197,7 +286,6 @@ app.put('/api/items/:itemId', async (req, res) => {
     await client.close();
   }
 });
-
 
 // Start the server
 app.listen(port, () => {

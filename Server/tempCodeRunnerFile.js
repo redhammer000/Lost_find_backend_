@@ -1,1 +1,1 @@
-/api/items_insert
+/api/users

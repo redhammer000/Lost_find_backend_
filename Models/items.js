@@ -1,7 +1,6 @@
 const { MongoClient } = require('mongodb');
 const { blob } = require('stream/consumers');
 
-// MongoDB connection URL
 const url = 'mongodb://localhost:27017/';
 const dbName = 'LOST_AND_FOUND';
 
